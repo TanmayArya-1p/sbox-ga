@@ -24,4 +24,28 @@ template<std::size_t N, std::size_t M>
 		return otpt;
 	}
 
+
+template<std::size_t N, std::size_t M>
+defs::SBox<N, M>& crossOverSBox(defs::SBox<N, M>& p1, defs::SBox<N, M>& p2) {
+	defs::SBox<N, M> otpt;
+	// using one point crossover
+	std::array<uint, N> p1_sub = p1.getSubstitution();
+	std::array<uint, N> p2_sub = p2.getSubstitution();
+	auto distr = std::uniform_int_distribution<std::size_t>(1, N-1);
+	auto pivot = distr(rng);
+
+
+	std::array<uint, N> child_sub;
+	for(int i =0 ; i < N; i++) {
+		if(i < pivot) {
+			child_sub[i] = p1_sub[i];
+		} else {
+			child_sub[i] = p2_sub[i];
+		}
+	}
+	otpt = {child_sub};
+	return otpt;
+}
+
+
 }

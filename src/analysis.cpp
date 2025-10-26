@@ -1,7 +1,10 @@
 #include <bits/stdc++.h>
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include "../include/sbox.hpp"
+
+
 
 
 template<std::size_t N , std::size_t M>
@@ -37,7 +40,7 @@ struct SBoxStatistics {
 
 
 template<std::size_t N, std::size_t M>
-struct SBoxStatistics<N,M> sbox_analyze(std::shared_ptr<defs::SBox<N,M>> sbox) {
+struct SBoxStatistics<N,M> sbox_analyze(std::shared_ptr<defs::SBox<N,M>> sbox, std::function<int(const SBoxStatistics<N,M>&)> score_statistic) {
 
 	SBoxStatistics<N,M> stats;
 	stats.sbox = sbox;
@@ -60,8 +63,18 @@ struct SBoxStatistics<N,M> sbox_analyze(std::shared_ptr<defs::SBox<N,M>> sbox) {
 	}
 
 
-	stats.score = -stats.delta*256 + stats.zero_count;
+	// stats.score = -stats.delta*256 + stats.zero_count;
+	stats.score = score_func(stats);
 	return stats;
 }
 
+}
+
+
+namespace score {
+
+	template<std::size_t N , std::size_t M>
+	int test_score(const analysis::SBoxStatistics<N,M>& stats) {
+		return -stats.delta*256 + stats.zero_count;
+	}
 }
