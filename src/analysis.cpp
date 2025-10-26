@@ -1,9 +1,17 @@
 #include <bits/stdc++.h>
 #include <cstddef>
 #include <memory>
-#include <optional>
 #include "../include/sbox.hpp"
+#include "../include/analysis.hpp"
 
+
+namespace score {
+
+	template<std::size_t N , std::size_t M>
+	int test_score(const analysis::SBoxStatistics<N,M>& stats) {
+		return -stats.delta*256 + stats.zero_count;
+	}
+}
 
 
 
@@ -29,14 +37,17 @@ std::vector<std::vector<uint>>& defs::SBox<N,M>::generate_ddt(bool flush) {
 namespace analysis {
 
 
-template<std::size_t N, std::size_t M>
-struct SBoxStatistics {
-	uint zero_count;
-	uint delta;
-	uint cnt_delta;
-	std::shared_ptr<defs::SBox<N,M>> sbox;
-	std::optional<int> score;
-};
+	template<std::size_t N, std::size_t M>
+	SBoxStatistics<N,M>::SBoxStatistics(std::shared_ptr<defs::SBox<N, M>> sbox_shared_ptr) {
+		*this = sbox_analyze(sbox_shared_ptr, score::test_score);
+	}
+
+
+	template<std::size_t N, std::size_t M>
+	auto SBoxStatistics<N,M>::operator<=>(const SBoxStatistics<N,M>& other) const {
+		return this->score <=> other.score;
+	}
+
 
 
 template<std::size_t N, std::size_t M>
@@ -68,13 +79,4 @@ struct SBoxStatistics<N,M> sbox_analyze(std::shared_ptr<defs::SBox<N,M>> sbox, s
 	return stats;
 }
 
-}
-
-
-namespace score {
-
-	template<std::size_t N , std::size_t M>
-	int test_score(const analysis::SBoxStatistics<N,M>& stats) {
-		return -stats.delta*256 + stats.zero_count;
-	}
 }

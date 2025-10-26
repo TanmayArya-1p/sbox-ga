@@ -5,6 +5,7 @@
 #include <iterator>
 #include <ranges>
 #include <sys/types.h>
+#include "../include/utils.hpp"
 
 namespace {
 	template<typename T>

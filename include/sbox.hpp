@@ -11,6 +11,7 @@ namespace defs {
 
 	template<std::size_t N , std::size_t M>
 	class SBox {
+		static_assert(N>=M, "Invalid SBox size arguments");
 
 		public:
 		SBox(std::array<uint, N>&& substitution);
