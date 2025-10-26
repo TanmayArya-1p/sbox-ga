@@ -1,4 +1,3 @@
-#pragma once
 #include <bits/stdc++.h>
 #include <bitset>
 #include <cstddef>

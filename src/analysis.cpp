@@ -1,6 +1,7 @@
-#pragma once
 #include <bits/stdc++.h>
-#include "sbox.cpp"
+#include <memory>
+#include <optional>
+#include "../include/sbox.hpp"
 
 
 template<std::size_t N , std::size_t M>
@@ -18,4 +19,49 @@ std::vector<std::vector<uint>>& defs::SBox<N,M>::generate_ddt(bool flush) {
 		}
 	}
 	return this->ddt;
+}
+
+
+
+namespace analysis {
+
+
+template<std::size_t N, std::size_t M>
+struct SBoxStatistics {
+	uint zero_count;
+	uint delta;
+	uint cnt_delta;
+	std::shared_ptr<defs::SBox<N,M>> sbox;
+	std::optional<int> score;
+};
+
+
+template<std::size_t N, std::size_t M>
+struct SBoxStatistics<N,M> sbox_analyze(std::shared_ptr<defs::SBox<N,M>> sbox) {
+
+	SBoxStatistics<N,M> stats;
+	stats.sbox = sbox;
+	stats.zero_count = 0;
+	stats.delta = 0;
+	stats.cnt_delta = 0;
+
+	sbox->generate_ddt();
+
+	// TODO: MAKE THIS MULTITHREADED
+	for(auto& i : sbox->ddt) {
+		for(auto& j : i) {
+			if(j == 0)
+				stats.zero_count++;
+			if(j == stats.delta)
+				stats.cnt_delta++;
+			if(j > stats.delta)
+				stats.cnt_delta=1;
+		}
+	}
+
+
+	stats.score = -stats.delta*256 + stats.zero_count;
+	return stats;
+}
+
 }

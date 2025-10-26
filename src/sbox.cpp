@@ -1,4 +1,3 @@
-#pragma once
 #include <array>
 #include <bits/stdc++.h>
 #include <bitset>
@@ -7,7 +6,7 @@
 #include <vector>
 #include <random>
 #include <chrono>
-#include "utils.cpp"
+#include "../include/utils.hpp"
 
 namespace {
 	std::mt19937 rng(std::chrono::steady_clock::now().time_since_epoch().count());
