@@ -42,5 +42,4 @@ constexpr bool validate_upper_bound(const T& array, elem_t<T> bound) {
 	return *std::max_element(std::execution::par_unseq ,array.begin(), array.end()) <= bound;
 }
 
-
 }
