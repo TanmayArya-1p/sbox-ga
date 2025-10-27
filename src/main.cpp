@@ -5,7 +5,7 @@
 
 
 int main() {
-	genetic::Population<4,4> population(100 , genetic::crossover::pmx<4>);
+	genetic::Population<4> population(10 , genetic::crossover_perm::pmx<4>);
 	population.init_random();
 
 

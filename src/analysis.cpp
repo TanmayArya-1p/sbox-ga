@@ -10,6 +10,7 @@ template<std::size_t N , std::size_t M>
 std::vector<std::vector<uint>>& defs::SBox<N,M>::generate_ddt(bool flush) {
 	if(!flush && !ddt.empty())
 		return this->ddt;
+
 	this->ddt = std::vector<std::vector<uint>>(input_ub,std::vector<uint>(output_ub,0));
 
 	//need to go through every single inp diff
@@ -70,9 +71,7 @@ namespace analysis {
 		std::optional<int> score;
 		SBoxStatistics() = default;
 		SBoxStatistics(std::shared_ptr<defs::SBox<N, M>> sbox_shared_ptr, std::function<int(const SBoxStatistics<N,M>&)> score_statistic) {
-
 			*this = sbox_analyze(sbox_shared_ptr, score_statistic);
-
 		}
 
 		auto operator<=>(const SBoxStatistics<N,M>& other) const {
