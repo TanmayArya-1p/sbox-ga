@@ -23,7 +23,7 @@ namespace crossover {
 	crossover_alg<N> tpc = [](const std::array<ulong, 1<<N>& p0,const std::array<ulong, 1<<N>& p1) -> std::array<typename std::array<ulong, 1<<N>::value_type, 1<<N> {
 		//two point crossover
 
-		std::uniform_int_distribution<uint> distr(0, 1);
+		std::uniform_int_distribution<uint> distr(0, (1<<N)-1);
 		std::array<ulong, 1<<N> child;
 
 		std::pair<uint,uint> pivots = {distr(rng), distr(rng)};
@@ -35,7 +35,7 @@ namespace crossover {
 		for (size_t i= pivots.first; i < pivots.second; i++) {
 			child[i] = p1[i];
 		}
-		for (size_t i= pivots.second; i < N; i++) {
+		for (size_t i= pivots.second; i < 1<<N; i++) {
 			child[i] = p0[i];
 		}
 		return child;
@@ -43,7 +43,6 @@ namespace crossover {
 
 }
 
-//TODO: REVALUATE MULTITHREADING OPT
 
 template<std::size_t N>
 defs::SBox<N, N> mutateSBox(defs::SBox<N,N>& sbox) {
@@ -62,7 +61,8 @@ defs::SBox<N, N> mutateSBox(defs::SBox<N,N>& sbox) {
 
 template<std::size_t N>
 defs::SBox<N, N> crossOverSBox(const defs::SBox<N, N>& p1, const defs::SBox<N, N>& p2, crossover::crossover_alg<N> cross) {
-	// single point crossover
+	// TODO: queue crosses over a thread pool
+
 	std::array<ulong, 1<<N> p1_sub = p1.getSubstitution();
 	std::array<ulong, 1<<N> p2_sub = p2.getSubstitution();
 
@@ -76,12 +76,11 @@ namespace selection {
 	template<std::size_t N , std::size_t M>
 	std::vector<analysis::SBoxStatistics<N,  M>> eliteK(const std::vector<analysis::SBoxStatistics<N,  M>>& stats, uint k) {
 
-		// TODO: parallelize this
+		// TODO: parallelize this with a thread pool
 
 		std::priority_queue<analysis::SBoxStatistics<N,M>, std::vector<analysis::SBoxStatistics<N,M>>, std::greater<analysis::SBoxStatistics<N,M>>> pq;
 		analysis::SBoxStatistics<N,  M> min_stat = *stats.begin();
 
-		// eventually need to mix in the worst candidate to prevent localization
 		k--;
 		for(const auto& stat : stats) {
 			if(pq.size() < k) {
@@ -107,6 +106,12 @@ namespace selection {
 
 		return res;
 	}
+
+
+	//TODO: IMPLEMENT MULTITHREADED TOURNAMENT
+	template<std::size_t N , std::size_t M>
+	std::vector<analysis::SBoxStatistics<N,  M>> tournamentKF(const std::vector<analysis::SBoxStatistics<N,  M>>& stats, uint k);
+
 }
 
 
@@ -156,6 +161,7 @@ class Population {
 
 
 			//TODO: put k in a config or something
+			//TODO: take selection critera in population constructor
 			std::vector<analysis::SBoxStatistics<N, N>> elites = selection::eliteK(this->collect_statistics(), 10);
 			for(auto& stat : elites) {
 				new_sboxes.push_back(stat.sbox);
@@ -172,6 +178,7 @@ class Population {
 				auto child = genetic::crossOverSBox<N>(*p1.get(), *p2.get(), this->crossover);
 
 				std::uniform_real_distribution<double> mutation_dist(0.0, 1.0);
+
 				//TODO: put mutation rate in a config
 				if(mutation_dist(rng) < 0.8) {
 				    child = genetic::mutateSBox(child);

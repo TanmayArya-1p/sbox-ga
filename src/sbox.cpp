@@ -34,7 +34,7 @@ class SBox {
 			return os;
 		}
 
-		SBox(std::array<ulong, 1<<M>&& substitution) {
+		SBox(std::array<ulong, 1<<N>&& substitution) {
 			this->output_ub = 1<<M;
 			this->input_ub = 1<<N;
 
@@ -46,7 +46,7 @@ class SBox {
 		}
 
 
-		SBox(std::array<ulong, 1<<M>& substitution) {
+		SBox(std::array<ulong, 1<<N>& substitution) {
 
 			this->input_ub = 1<<N;
 			this->output_ub = 1<<M;
