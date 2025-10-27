@@ -1,11 +1,9 @@
 #pragma once
-
 #include <array>
 #include <bits/stdc++.h>
 #include <cstddef>
 #include "sbox.cpp"
 #include "analysis.cpp"
-
 #include <functional>
 #include <memory>
 #include <queue>
@@ -22,11 +20,43 @@ namespace crossover_perm {
 
 	template<std::size_t N>
 	crossover_alg<N> pmx;
-
 	template<std::size_t N>
-	crossover_alg<N> ox2;
+	crossover_alg<N> ox1= [](const std::array<uint, N>& p0,const std::array<uint, N>& p1) {
+		// sauce: https://en.wikipedia.org/wiki/Crossover_(evolutionary_algorithm)#Order_crossover_(OX1)
+		std::uniform_int_distribution<uint> distr(0, 1);
+		std::array<uint, N> child;
+		std::priority_queue<std::pair<uint,uint>, std::vector<std::pair<uint,uint>> , std::greater<std::pair<uint,uint>>> q;
+
+		std::pair<uint,uint> pivots = {distr(rng), distr(rng)};
+		if(pivots.first > pivots.second) std::swap(pivots.first, pivots.second);
+
+		std::array<uint, N> p1_index_table;
+		for(int i = 0; i < N; i++) {
+			p1_index_table[p1[i]] = i;
+		}
+
+		for(int i = 0;i < N; i++) {
+			if(pivots.first <= i && i <= pivots.second) {
+				child[i] = p0[i];
+			} else {
+				child[i] = -1;
+				q.push({p1_index_table[p0[i]], p0[i]});
+			}
+		}
+
+		for(int i = 0 ;i < N;i++) {
+			if(child[i] == -1) {
+				child[i] = q.top().second;
+				q.pop();
+			}
+		}
+
+		return child;
+	};
+
 }
 
+//TODO: REVALUATE MULTITHREADING OPT
 
 template<std::size_t N>
 defs::SBox<N, N> mutateSBox(defs::SBox<N,N>& sbox) {
@@ -181,6 +211,3 @@ class Population {
 };
 
 }
-
-
-//TODO: MAKE EVERYTHING SYMMETRIC SBOXES N ==M
