@@ -8,49 +8,36 @@
 #include <memory>
 #include <queue>
 #include <random>
+#include <sys/types.h>
 
 
 
 
 namespace genetic {
 
-namespace crossover_perm {
+namespace crossover {
 	template<std::size_t N>
-	using crossover_alg = std::function<std::array<typename std::array<uint, N>::value_type, N>(const std::array<uint, N>& p1,const std::array<uint, N>& p2)>;
+	using crossover_alg = std::function<std::array<typename std::array<ulong, 1<<N>::value_type, 1<<N>(const std::array<ulong, 1<<N>& p1,const std::array<ulong, 1<<N>& p2)>;
 
 	template<std::size_t N>
-	crossover_alg<N> pmx;
-	template<std::size_t N>
-	crossover_alg<N> ox1= [](const std::array<uint, N>& p0,const std::array<uint, N>& p1) {
-		// sauce: https://en.wikipedia.org/wiki/Crossover_(evolutionary_algorithm)#Order_crossover_(OX1)
+	crossover_alg<N> tpc = [](const std::array<ulong, 1<<N>& p0,const std::array<ulong, 1<<N>& p1) -> std::array<typename std::array<ulong, 1<<N>::value_type, 1<<N> {
+		//two point crossover
+
 		std::uniform_int_distribution<uint> distr(0, 1);
-		std::array<uint, N> child;
-		std::priority_queue<std::pair<uint,uint>, std::vector<std::pair<uint,uint>> , std::greater<std::pair<uint,uint>>> q;
+		std::array<ulong, 1<<N> child;
 
 		std::pair<uint,uint> pivots = {distr(rng), distr(rng)};
 		if(pivots.first > pivots.second) std::swap(pivots.first, pivots.second);
 
-		std::array<uint, N> p1_index_table;
-		for(int i = 0; i < N; i++) {
-			p1_index_table[p1[i]] = i;
+		for (size_t i= 0; i <= pivots.first; i++) {
+			child[i] = p0[i];
 		}
-
-		for(int i = 0;i < N; i++) {
-			if(pivots.first <= i && i <= pivots.second) {
-				child[i] = p0[i];
-			} else {
-				child[i] = -1;
-				q.push({p1_index_table[p0[i]], p0[i]});
-			}
+		for (size_t i= pivots.first; i < pivots.second; i++) {
+			child[i] = p1[i];
 		}
-
-		for(int i = 0 ;i < N;i++) {
-			if(child[i] == -1) {
-				child[i] = q.top().second;
-				q.pop();
-			}
+		for (size_t i= pivots.second; i < N; i++) {
+			child[i] = p0[i];
 		}
-
 		return child;
 	};
 
@@ -61,11 +48,11 @@ namespace crossover_perm {
 template<std::size_t N>
 defs::SBox<N, N> mutateSBox(defs::SBox<N,N>& sbox) {
 
- 	std::array<uint, N> parent_sub = sbox.getSubstitution();
-	auto distr = std::uniform_int_distribution<std::size_t>(0, N-1);
+ 	std::array<ulong, 1<<N> parent_sub = sbox.getSubstitution();
+	auto distr = std::uniform_int_distribution<std::size_t>(0, (1<<N)-1);
 
 	// TODO: put mutation intensity in config somewhere
-	for(int i =0 ; i < 2; i++) {
+	for(int i =0 ; i < 5; i++) {
 		std::swap(parent_sub[distr(rng)], parent_sub[distr(rng)]);
 	}
 	defs::SBox<N, N> otpt = {parent_sub};
@@ -74,12 +61,12 @@ defs::SBox<N, N> mutateSBox(defs::SBox<N,N>& sbox) {
 
 
 template<std::size_t N>
-defs::SBox<N, N> crossOverSBox(const defs::SBox<N, N>& p1, const defs::SBox<N, N>& p2, crossover_perm::crossover_alg<N> cross) {
-	std::array<uint, N> p1_sub = p1.getSubstitution();
-	std::array<uint, N> p2_sub = p2.getSubstitution();
-	auto distr = std::uniform_int_distribution<std::size_t>(1, N-1);
+defs::SBox<N, N> crossOverSBox(const defs::SBox<N, N>& p1, const defs::SBox<N, N>& p2, crossover::crossover_alg<N> cross) {
+	// single point crossover
+	std::array<ulong, 1<<N> p1_sub = p1.getSubstitution();
+	std::array<ulong, 1<<N> p2_sub = p2.getSubstitution();
 
-	std::array<uint,N> child_sub = cross(p1_sub, p2_sub);
+	std::array<ulong,1<<N> child_sub = cross(p1_sub, p2_sub);
 	auto otpt = defs::SBox<N, N>(child_sub);
 	return otpt;
 }
@@ -124,14 +111,15 @@ namespace selection {
 
 
 
-
+template<std::size_t N>
+using score_statistic = std::function<int(const analysis::SBoxStatistics<N,N>&)>;
 
 template<std::size_t N>
 class Population {
 	public:
-		Population(std::size_t size, crossover_perm::crossover_alg<N> crossover) : size(size) ,crossover(crossover) {}
+		Population(std::size_t size, crossover::crossover_alg<N> crossover, score_statistic<N> score_stat ) : size(size) ,crossover(crossover), score_stat(score_stat) {}
 
-		Population(std::vector<std::shared_ptr<defs::SBox<N, N>>> sboxes, crossover_perm::crossover_alg<N> crossover ) : sboxes(sboxes), crossover(crossover) {}
+		Population(std::vector<std::shared_ptr<defs::SBox<N, N>>> sboxes, crossover::crossover_alg<N> crossover , score_statistic<N> score_stat) : sboxes(sboxes), crossover(crossover), score_stat(score_stat) {}
 
 		void init_random() {
 			sboxes.reserve(size);
@@ -140,16 +128,13 @@ class Population {
 			}
 		}
 
-		std::vector<analysis::SBoxStatistics<N, N>> population_statistics() {
+		std::vector<analysis::SBoxStatistics<N, N>> collect_statistics() {
 			std::vector<analysis::SBoxStatistics<N, N>> stats;
 			stats.reserve(this->size);
 			for(auto& sbox : sboxes) {
 				stats.push_back(analysis::SBoxStatistics<N, N>{
 					sbox,
-					std::function<int(const analysis::SBoxStatistics<N,N>&)>(
-			        [](const analysis::SBoxStatistics<N,N>& stats) -> int {
-			            return -stats.delta; //TODO: FIND BETTER METRIC FROM A PAPER
-			        })
+					this->score_stat
 				});
 
 				if(stats.size() == 1) {
@@ -171,7 +156,7 @@ class Population {
 
 
 			//TODO: put k in a config or something
-			std::vector<analysis::SBoxStatistics<N, N>> elites = selection::eliteK(this->population_statistics(), 10);
+			std::vector<analysis::SBoxStatistics<N, N>> elites = selection::eliteK(this->collect_statistics(), 10);
 			for(auto& stat : elites) {
 				new_sboxes.push_back(stat.sbox);
 			}
@@ -198,7 +183,7 @@ class Population {
 		}
 
 
-		analysis::SBoxStatistics<N,N> best_sbox() {
+		analysis::SBoxStatistics<N,N> best_sbox_candidate() {
 			return this->best_cand;
 		}
 
@@ -207,7 +192,8 @@ class Population {
 		std::size_t size;
 		std::vector<std::shared_ptr<defs::SBox<N, N>>> sboxes;
 		analysis::SBoxStatistics<N, N> best_cand;
-		crossover_perm::crossover_alg<N> crossover;
+		crossover::crossover_alg<N> crossover;
+		score_statistic<N> score_stat;
 };
 
 }

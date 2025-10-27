@@ -1,3 +1,6 @@
+run : build
+	./build/sbox-ga
+
 build:
 	cmake -S . -B build
 	cd build && make
@@ -5,4 +8,4 @@ build:
 clean:
 	rm -rf build/*
 
-.PHONY: build clean
+.PHONY: build clean run

@@ -1,6 +1,5 @@
 #pragma once
 #include <bits/stdc++.h>
-#include <bitset>
 #include <cstddef>
 #include <memory>
 #include "sbox.cpp"
@@ -12,13 +11,16 @@ std::vector<std::vector<uint>>& defs::SBox<N,M>::generate_ddt(bool flush) {
 		return this->ddt;
 
 	this->ddt = std::vector<std::vector<uint>>(input_ub,std::vector<uint>(output_ub,0));
-
 	//need to go through every single inp diff
-	for(uint idiff = 0; idiff < input_ub ;idiff++) {
-		for(uint i1 = 0 ;i1 < input_ub ; i1++) {
-			uint i2 = i1^idiff;
-			std::bitset<M> bitset = this->encrypt(i1) ^ this->encrypt(i2);
-			ddt[idiff][(uint)(bitset.to_ulong())]++;
+	for(ulong idiff = 0; idiff < input_ub ;idiff++) {
+		for(ulong i1 = 0 ;i1 < input_ub ; i1++) {
+			ulong i2 = i1^idiff;
+
+			ulong y1 = this->encrypt(i1).to_ulong();
+			ulong y2 = this->encrypt(i2).to_ulong();
+
+			ulong od = y1 ^ y2;
+			ddt[idiff][od]++;
 		}
 	}
 	return this->ddt;
@@ -50,7 +52,7 @@ namespace analysis {
 					stats.zero_count++;
 				if(j == stats.delta)
 					stats.cnt_delta++;
-				if(j > stats.delta) {
+				if(j!=16 && j > stats.delta) {
 					stats.delta = j;
 					stats.cnt_delta=1;
 				}
