@@ -1,6 +1,6 @@
 #include <bits/stdc++.h>
-#include "../include/genetic.hpp"
-#include "../include/analysis.hpp"
+#include "genetic.cpp"
+#include "analysis.cpp"
 
 
 

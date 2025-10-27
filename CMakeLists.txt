@@ -9,4 +9,4 @@ add_executable(sbox-ga
 				src/analysis.cpp
 )
 
-target_include_directories(sbox-ga PRIVATE ${CMAKE_SOURCE_DIR}/include)
+# target_include_directories(sbox-ga PRIVATE ${CMAKE_SOURCE_DIR}/include)
