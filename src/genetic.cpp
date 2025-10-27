@@ -1,10 +1,12 @@
 #pragma once
 
+#include <array>
 #include <bits/stdc++.h>
 #include <cstddef>
 #include "sbox.cpp"
 #include "analysis.cpp"
 
+#include <functional>
 #include <memory>
 #include <queue>
 #include <random>
@@ -14,22 +16,20 @@ namespace genetic {
 
 template<std::size_t N, std::size_t M>
 defs::SBox<N, M> mutateSBox(defs::SBox<N,M>& sbox) {
-	defs::SBox<N, M> otpt;
  	std::array<uint, N> parent_sub = sbox.getSubstitution();
 	auto distr = std::uniform_int_distribution<std::size_t>(0, N-1);
 
 	// TODO: put mutation intensity in config somewhere
 	for(int i =0 ; i < 2; i++) {
-		parent_sub[distr(rng)] = parent_sub[distr(rng)];
+		std::swap(parent_sub[distr(rng)], parent_sub[distr(rng)]);
 	}
-	otpt = {parent_sub};
+	defs::SBox<N, M> otpt = {parent_sub};
 	return otpt;
 }
 
 
 template<std::size_t N, std::size_t M>
-defs::SBox<N, M>& crossOverSBox(const defs::SBox<N, M>& p1, const defs::SBox<N, M>& p2) {
-	defs::SBox<N, M> otpt;
+defs::SBox<N, M> crossOverSBox(const defs::SBox<N, M>& p1, const defs::SBox<N, M>& p2) {
 	// using one point crossover
 	std::array<uint, N> p1_sub = p1.getSubstitution();
 	std::array<uint, N> p2_sub = p2.getSubstitution();
@@ -45,23 +45,23 @@ defs::SBox<N, M>& crossOverSBox(const defs::SBox<N, M>& p1, const defs::SBox<N, 
 			child_sub[i] = p2_sub[i];
 		}
 	}
-	otpt = {child_sub};
+	defs::SBox<N, M> otpt = {child_sub};
 	return otpt;
 }
 
 namespace selection {
 
 	template<std::size_t N , std::size_t M>
-	std::vector<analysis::SBoxStatistics<N,  M>>& eliteK(std::vector<analysis::SBoxStatistics<N,  M>>& stats, uint k) {
+	std::vector<analysis::SBoxStatistics<N,  M>> eliteK(const std::vector<analysis::SBoxStatistics<N,  M>>& stats, uint k) {
 
 		// TODO: parallelize this
 
-		std::priority_queue<int, std::vector<int>, std::greater<analysis::SBoxStatistics<N,M>>> pq;
-		defs::SBox<N, M> min_stat = *stats.begin();
+		std::priority_queue<analysis::SBoxStatistics<N,M>, std::vector<analysis::SBoxStatistics<N,M>>, std::greater<analysis::SBoxStatistics<N,M>>> pq;
+		analysis::SBoxStatistics<N,  M> min_stat = *stats.begin();
 
 		// eventually need to mix in the worst candidate to prevent localization
 		k--;
-		for(auto& stat : stats) {
+		for(const auto& stat : stats) {
 			if(pq.size() < k) {
 				pq.push(stat);
 			} else {
@@ -76,9 +76,10 @@ namespace selection {
 		}
 
 		std::vector<analysis::SBoxStatistics<N,  M>> res;
+		res.reserve(k + 1);
 		while (!pq.empty()) {
-		  res.push_back(pq.top());
-		  pq.pop();
+			res.push_back(pq.top());
+			pq.pop();
 		}
 		res.push_back(min_stat);
 
@@ -87,12 +88,26 @@ namespace selection {
 }
 
 
+
+namespace crossover {
+	template<std::size_t N>
+	using crossover_alg = std::function<std::array<uint, N>(const std::array<uint, N>& p1,const std::array<uint, N>& p2)>;
+
+	template<std::size_t N>
+	crossover_alg<N> pmx;
+
+	template<std::size_t N>
+	crossover_alg<N> ox2;
+}
+
+
+
 template<std::size_t N, std::size_t M>
 class Population {
 	public:
-		Population(std::size_t size) : size(size) {}
+		Population(std::size_t size, crossover::crossover_alg<N> crossover) : size(size) ,crossover(crossover) {}
 
-		Population(std::vector<std::shared_ptr<defs::SBox<N, M>>> sboxes) : sboxes(sboxes) {}
+		Population(std::vector<std::shared_ptr<defs::SBox<N, M>>> sboxes, crossover::crossover_alg<N> crossover ) : sboxes(sboxes), crossover(crossover) {}
 
 		void init_random() {
 			sboxes.reserve(size);
@@ -101,11 +116,17 @@ class Population {
 			}
 		}
 
-		std::vector<analysis::SBoxStatistics<N, M>>& population_statistics() {
+		std::vector<analysis::SBoxStatistics<N, M>> population_statistics() {
 			std::vector<analysis::SBoxStatistics<N, M>> stats;
 			stats.reserve(size);
 			for(auto& sbox : sboxes) {
-				stats.push_back(analysis::sbox_analyze(sbox, score::test_score));
+				stats.push_back(analysis::SBoxStatistics<N, M>{sbox,
+					std::function<int(const analysis::SBoxStatistics<N,M>&)>(
+			        [](const analysis::SBoxStatistics<N,M>& stats) -> int {
+			            return -stats.delta;
+			        })
+				});
+
 				if(stats.size() == 1) {
 					this->best_cand = stats[0];
 				} else if(*(--stats.end()) > this->best_cand) {
@@ -113,11 +134,13 @@ class Population {
 				}
 			}
 
+
 			return stats;
 		}
 
 
 		void evolve() {
+
 			std::vector<std::shared_ptr<defs::SBox<N, M>>> new_sboxes;
 			new_sboxes.reserve(size);
 
@@ -133,16 +156,16 @@ class Population {
 
 			while(new_sboxes.size() < size) {
 				//pick 1 from elites
-				std::shared_ptr<defs::SBox<N, M>> p1 = elites[distr(rng)];
+				std::shared_ptr<defs::SBox<N, M>> p1 = elites[distr(rng)].sbox;
 				//pick 1 from general pop
 				std::shared_ptr<defs::SBox<N, M>> p2 = sboxes[mixer(rng)];
 				auto child = genetic::crossOverSBox(*p1.get(), *p2.get());
-
 				//TODO: put mutation rate in a config
-				if(rand() % 10 < 0.8*10) {
-					child = genetic::mutateSBox(child);
+				std::uniform_real_distribution<double> mutation_dist(0.0, 1.0);
+				if(mutation_dist(rng) < 0.8) {
+				    child = genetic::mutateSBox(child);
 				}
-				new_sboxes.push_back(child);
+				new_sboxes.push_back(std::make_shared<defs::SBox<N, M>>(child));
 			}
 
 			this->sboxes = new_sboxes;
@@ -158,6 +181,10 @@ class Population {
 		std::size_t size;
 		std::vector<std::shared_ptr<defs::SBox<N, M>>> sboxes;
 		analysis::SBoxStatistics<N, M> best_cand;
+		crossover::crossover_alg<N> crossover;
 };
 
 }
+
+
+//TODO: MAKE EVERYTHING SYMMETRIC SBOXES N ==M
