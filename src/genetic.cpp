@@ -1,12 +1,8 @@
 #pragma once
-#include <array>
+#include "config.h"
+#include "analysis.cpp"
 #include <bits/stdc++.h>
 #include <cstddef>
-#include "sbox.cpp"
-#include "analysis.cpp"
-#include <functional>
-#include <memory>
-#include <queue>
 #include <random>
 #include <sys/types.h>
 
@@ -73,8 +69,12 @@ defs::SBox<N, N> crossOverSBox(const defs::SBox<N, N>& p1, const defs::SBox<N, N
 
 namespace selection {
 
+	template<std::size_t N, std::size_t M>
+	using criteria = std::function<std::vector<analysis::SBoxStatistics<N,  M>>(const std::vector<analysis::SBoxStatistics<N,M>>& stats, uint k)>;
+
+
 	template<std::size_t N , std::size_t M>
-	std::vector<analysis::SBoxStatistics<N,  M>> eliteK(const std::vector<analysis::SBoxStatistics<N,  M>>& stats, uint k) {
+	static const criteria<N,M> eliteK = [](const std::vector<analysis::SBoxStatistics<N,  M>>& stats, uint k) -> std::vector<analysis::SBoxStatistics<N,  M>> {
 
 		// TODO: parallelize this with a thread pool
 
@@ -105,12 +105,39 @@ namespace selection {
 		res.push_back(min_stat);
 
 		return res;
-	}
+	};
 
 
-	//TODO: IMPLEMENT MULTITHREADED TOURNAMENT
 	template<std::size_t N , std::size_t M>
-	std::vector<analysis::SBoxStatistics<N,  M>> tournamentKF(const std::vector<analysis::SBoxStatistics<N,  M>>& stats, uint k);
+	static const criteria<N, M> tournamentKF = [](const std::vector<analysis::SBoxStatistics<N,  M>>& stats, uint k) -> std::vector<analysis::SBoxStatistics<N,  M>> {
+
+		std::uniform_int_distribution<size_t> distr(0, stats.size() - 1);
+
+		// TODO: QUEUE K TOURNAMENTS OVER DIFFERENT THREADS
+		std::vector<analysis::SBoxStatistics<N,  M>> selected;
+		selected.reserve(k);
+
+
+		size_t tournament_size = stats.size()*TOURNAMENT_SELECTION_PRESSURE;
+		for (size_t i = 0 ; i< tournament_size ; i++) {
+			std::unordered_set<size_t> chosen;
+
+			size_t max_cand = distr(rng);
+			chosen.insert(max_cand);
+
+			while (chosen.size() < k) {
+				size_t idx = distr(rng);
+				if (chosen.find(idx) == chosen.end()) {
+					chosen.insert(idx);
+					if(stats[max_cand] < stats[idx]) {
+						max_cand = idx;
+					}
+				}
+			}
+			selected.push_back(stats[max_cand]);
+		}
+		return selected;
+	};
 
 }
 
@@ -122,13 +149,13 @@ using score_statistic = std::function<int(const analysis::SBoxStatistics<N,N>&)>
 template<std::size_t N>
 class Population {
 	public:
-		Population(std::size_t size, crossover::crossover_alg<N> crossover, score_statistic<N> score_stat ) : size(size) ,crossover(crossover), score_stat(score_stat) {}
+		Population(std::size_t size, crossover::crossover_alg<N> crossover, score_statistic<N> score_stat, selection::criteria<N, N> selection_criteria) : size(size) ,crossover(crossover), score_stat(score_stat), selection_criteria(selection_criteria) {}
 
-		Population(std::vector<std::shared_ptr<defs::SBox<N, N>>> sboxes, crossover::crossover_alg<N> crossover , score_statistic<N> score_stat) : sboxes(sboxes), crossover(crossover), score_stat(score_stat) {}
+		Population(std::vector<std::shared_ptr<defs::SBox<N, N>>> sboxes, crossover::crossover_alg<N> crossover , score_statistic<N> score_stat, selection::criteria<N, N> selection_criteria) : sboxes(sboxes), crossover(crossover), score_stat(score_stat), selection_criteria(selection_criteria) {}
 
 		void init_random() {
 			sboxes.reserve(size);
-			for(int i = 0; i < size; i++) {
+			for(size_t i = 0; i < size; i++) {
 				sboxes.push_back(std::make_shared<defs::SBox<N, N>>(defs::randomInvertibleSBox<N>()));
 			}
 		}
@@ -154,15 +181,13 @@ class Population {
 		}
 
 
-		void evolve() {
+		void evolve(uint k=10) {
 
 			std::vector<std::shared_ptr<defs::SBox<N, N>>> new_sboxes;
 			new_sboxes.reserve(size);
 
 
-			//TODO: put k in a config or something
-			//TODO: take selection critera in population constructor
-			std::vector<analysis::SBoxStatistics<N, N>> elites = selection::eliteK(this->collect_statistics(), 10);
+			std::vector<analysis::SBoxStatistics<N, N>> elites =  this->selection_criteria(this->collect_statistics(), k);
 			for(auto& stat : elites) {
 				new_sboxes.push_back(stat.sbox);
 			}
@@ -179,8 +204,7 @@ class Population {
 
 				std::uniform_real_distribution<double> mutation_dist(0.0, 1.0);
 
-				//TODO: put mutation rate in a config
-				if(mutation_dist(rng) < 0.8) {
+				if(mutation_dist(rng) < MUTATION_RATE) {
 				    child = genetic::mutateSBox(child);
 				}
 				new_sboxes.push_back(std::make_shared<defs::SBox<N, N>>(child));
@@ -201,6 +225,7 @@ class Population {
 		analysis::SBoxStatistics<N, N> best_cand;
 		crossover::crossover_alg<N> crossover;
 		score_statistic<N> score_stat;
+		selection::criteria<N, N> selection_criteria;
 };
 
 }

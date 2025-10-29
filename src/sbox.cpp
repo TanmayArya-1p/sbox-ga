@@ -1,8 +1,5 @@
-#pragma once
-
-#include <algorithm>
-#include <array>
 #include <bits/stdc++.h>
+#include <cstddef>
 #include <numeric>
 #include <stdexcept>
 #include <sys/types.h>
@@ -25,8 +22,8 @@ class SBox {
 	public:
 
 		friend std::ostream& operator<<(std::ostream& os, const SBox<N,M>& sb) {
-			for(int i = 0 ;i < sb.input_ub ;i++) {
-				for(int j = 0 ;j < sb.output_ub ;j++) {
+			for(size_t i = 0 ;i < sb.input_ub ;i++) {
+				for(size_t j = 0 ;j < sb.output_ub ;j++) {
 					os << sb.ddt[i][j] << " ";
 				}
 				os << std::endl;

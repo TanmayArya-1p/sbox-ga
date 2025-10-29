@@ -1,10 +1,5 @@
 #include <bits/stdc++.h>
-#include <bitset>
-#include <cstddef>
 #include <execution>
-#include <iterator>
-#include <ranges>
-#include <sys/types.h>
 
 namespace {
 	template<typename T>
@@ -23,7 +18,7 @@ namespace utils {
 	template<std::size_t N>
 	constexpr bool validate_permutation(std::array<ulong, N> perm) {
 		std::bitset<N> found = {0};
-		for(int i = 0; i < N ; i++) {
+		for(size_t i = 0; i < N ; i++) {
 			if(perm[i] > N-1 || perm[i] < 0) return false;
 			found.flip(perm[i]);
 
