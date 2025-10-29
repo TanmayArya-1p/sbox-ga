@@ -1,3 +1,4 @@
+#pragma once
 #include <bits/stdc++.h>
 #include <cstddef>
 #include <numeric>
@@ -5,7 +6,7 @@
 #include <sys/types.h>
 #include <random>
 #include <chrono>
-#include "utils.cpp"
+#include "utils.hpp"
 
 
 namespace {

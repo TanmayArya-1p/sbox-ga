@@ -1,5 +1,8 @@
 #include <bits/stdc++.h>
-#include "genetic.cpp"
+#include "genetic.hpp"
+#include "analysis.hpp"
+#include "utils.hpp"
+#include "sbox.hpp"
 
 #define N 4
 #define pop 1000

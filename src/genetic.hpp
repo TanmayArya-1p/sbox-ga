@@ -1,6 +1,7 @@
 #pragma once
 #include "config.h"
-#include "analysis.cpp"
+#include "analysis.hpp"
+#include "sbox.hpp"
 #include <bits/stdc++.h>
 #include <cstddef>
 #include <random>
@@ -12,8 +13,10 @@
 namespace genetic {
 
 namespace crossover {
+
 	template<std::size_t N>
 	using crossover_alg = std::function<std::array<typename std::array<ulong, 1<<N>::value_type, 1<<N>(const std::array<ulong, 1<<N>& p1,const std::array<ulong, 1<<N>& p2)>;
+
 
 	template<std::size_t N>
 	crossover_alg<N> tpc = [](const std::array<ulong, 1<<N>& p0,const std::array<ulong, 1<<N>& p1) -> std::array<typename std::array<ulong, 1<<N>::value_type, 1<<N> {
@@ -46,8 +49,7 @@ defs::SBox<N, N> mutateSBox(defs::SBox<N,N>& sbox) {
  	std::array<ulong, 1<<N> parent_sub = sbox.getSubstitution();
 	auto distr = std::uniform_int_distribution<std::size_t>(0, (1<<N)-1);
 
-	// TODO: put mutation intensity in config somewhere
-	for(int i =0 ; i < 5; i++) {
+	for(int i =0 ; i < MUTATION_ROUNDS; i++) {
 		std::swap(parent_sub[distr(rng)], parent_sub[distr(rng)]);
 	}
 	defs::SBox<N, N> otpt = {parent_sub};

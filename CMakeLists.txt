@@ -3,10 +3,10 @@ project(sbox-ga)
 set(CMAKE_CXX_STANDARD 20)
 add_executable(sbox-ga
 				src/main.cpp
-				src/utils.cpp
-				src/sbox.cpp
-				src/genetic.cpp
-				src/analysis.cpp
+				src/utils.hpp
+				src/sbox.hpp
+				src/genetic.hpp
+				src/analysis.hpp
 )
 
 

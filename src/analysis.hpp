@@ -1,7 +1,9 @@
+#pragma once
 #include <bits/stdc++.h>
 #include <cstddef>
 #include <memory>
-#include "sbox.cpp"
+#include "sbox.hpp"
+
 
 
 template<std::size_t N , std::size_t M>
@@ -35,7 +37,7 @@ namespace analysis {
 
 
 	template<std::size_t N, std::size_t M>
-	struct SBoxStatistics<N,M> sbox_analyze(std::shared_ptr<defs::SBox<N,M>> sbox, std::function<int(const SBoxStatistics<N,M>&)> score_statistic) {
+	struct SBoxStatistics<N,M> sbox_analyze(std::shared_ptr<defs::SBox<N,M>> sbox, std::function<int(const analysis::SBoxStatistics<N,N>&)> score_statistic) {
 		SBoxStatistics<N,M> stats;
 		stats.sbox = sbox;
 		stats.zero_count = 0;
@@ -63,6 +65,14 @@ namespace analysis {
 		return stats;
 	}
 
+}
+namespace genetic {
+	template<std::size_t N>
+	using score_statistic = std::function<int(const analysis::SBoxStatistics<N,N>&)>;
+}
+
+namespace analysis {
+
 	template<std::size_t N, std::size_t M>
 	struct SBoxStatistics {
 		uint zero_count;
@@ -71,26 +81,12 @@ namespace analysis {
 		std::shared_ptr<defs::SBox<N,M>> sbox;
 		std::optional<int> score;
 		SBoxStatistics() = default;
-		SBoxStatistics(std::shared_ptr<defs::SBox<N, M>> sbox_shared_ptr, std::function<int(const SBoxStatistics<N,M>&)> score_statistic) {
+		SBoxStatistics(std::shared_ptr<defs::SBox<N, M>> sbox_shared_ptr, genetic::score_statistic<N> score_statistic) {
 			*this = sbox_analyze(sbox_shared_ptr, score_statistic);
 		}
 
 		auto operator<=>(const SBoxStatistics<N,M>& other) const {
 			return this->score <=> other.score;
 		}
-	};
-
-
-
-
-}
-
-
-
-namespace score {
-
-	template<std::size_t N , std::size_t M>
-	std::function<int(const analysis::SBoxStatistics<N,M>&)> test_score = [](const analysis::SBoxStatistics<N,M>& stats) {
-		return -stats.delta*256 + stats.zero_count;
 	};
 }
