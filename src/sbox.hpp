@@ -1,10 +1,5 @@
 #pragma once
 #include <bits/stdc++.h>
-#include <cstddef>
-#include <numeric>
-#include <stdexcept>
-#include <sys/types.h>
-#include <random>
 #include <chrono>
 #include "utils.hpp"
 
@@ -18,13 +13,13 @@ namespace defs {
 
 template<std::size_t N , std::size_t M>
 class SBox {
-	static_assert(N>=M, "Invalid SBox size arguments");
+	static_assert( N>=M , "Invalid SBox size arguments");
 
 	public:
 
 		friend std::ostream& operator<<(std::ostream& os, const SBox<N,M>& sb) {
-			for(size_t i = 0 ;i < sb.input_ub ;i++) {
-				for(size_t j = 0 ;j < sb.output_ub ;j++) {
+			for(std::size_t i = 0 ;i < sb.input_ub ;i++) {
+				for(std::size_t j = 0 ;j < sb.output_ub ;j++) {
 					os << sb.ddt[i][j] << " ";
 				}
 				os << std::endl;
@@ -80,7 +75,7 @@ class SBox {
 			if(N==M && utils::validate_permutation<1<<N>(this->sub)) {
 				this->invertible=true;
 				this->inv_map.resize(this->output_ub);
-				for (size_t i = 0; i < this->output_ub; i++) {
+				for (std::size_t i = 0; i < this->output_ub; i++) {
 					this->inv_map[this->sub[i]] = i;
 				}
 			}

@@ -1,7 +1,5 @@
 #pragma once
 #include <bits/stdc++.h>
-#include <cstddef>
-#include <memory>
 #include "sbox.hpp"
 
 
@@ -32,61 +30,65 @@ std::vector<std::vector<uint>>& defs::SBox<N,M>::generate_ddt(bool flush) {
 namespace analysis {
 
 
-	template<std::size_t N, std::size_t M>
-	struct SBoxStatistics;
+template<std::size_t N, std::size_t M>
+struct SBoxStatistics;
 
 
-	template<std::size_t N, std::size_t M>
-	struct SBoxStatistics<N,M> sbox_analyze(std::shared_ptr<defs::SBox<N,M>> sbox, std::function<int(const analysis::SBoxStatistics<N,N>&)> score_statistic) {
-		SBoxStatistics<N,M> stats;
-		stats.sbox = sbox;
-		stats.zero_count = 0;
-		stats.delta = 0;
-		stats.cnt_delta = 0;
+template<std::size_t N, std::size_t M>
+struct SBoxStatistics<N,M> sbox_analyze(std::shared_ptr<defs::SBox<N,M>> sbox, std::function<int(const analysis::SBoxStatistics<N,N>&)> score_statistic) {
+	SBoxStatistics<N,M> stats;
+	stats.sbox = sbox;
+	stats.zero_count = 0;
+	stats.delta = 0;
+	stats.cnt_delta = 0;
 
-		auto ddt = sbox->generate_ddt();
+	auto ddt = sbox->generate_ddt();
 
-		// TODO: MAKE THIS MULTITHREADED
-		for(auto& i : ddt) {
-			for(auto& j : i) {
-				if(j == 0)
-					stats.zero_count++;
-				if(j == stats.delta)
-					stats.cnt_delta++;
-				if(j!=16 && j > stats.delta) {
-					stats.delta = j;
-					stats.cnt_delta=1;
-				}
+	for(auto& i : ddt) {
+		for(auto& j : i) {
+			if(j == 0)
+				stats.zero_count++;
+			if(j == stats.delta)
+				stats.cnt_delta++;
+			if(j!=16 && j > stats.delta) {
+				stats.delta = j;
+				stats.cnt_delta=1;
 			}
 		}
-
-		stats.score = score_statistic(stats);
-
-		return stats;
 	}
+
+	stats.score = score_statistic(stats);
+
+	return stats;
+}
 
 }
 namespace genetic {
-	template<std::size_t N>
-	using score_statistic = std::function<int(const analysis::SBoxStatistics<N,N>&)>;
+
+template<std::size_t N>
+using score_statistic = std::function<int(const analysis::SBoxStatistics<N,N>&)>;
+
 }
 
 namespace analysis {
 
-	template<std::size_t N, std::size_t M>
-	struct SBoxStatistics {
-		uint zero_count;
-		uint delta;
-		uint cnt_delta;
-		std::shared_ptr<defs::SBox<N,M>> sbox;
-		std::optional<int> score;
-		SBoxStatistics() = default;
-		SBoxStatistics(std::shared_ptr<defs::SBox<N, M>> sbox_shared_ptr, genetic::score_statistic<N> score_statistic) {
-			*this = sbox_analyze(sbox_shared_ptr, score_statistic);
-		}
 
-		auto operator<=>(const SBoxStatistics<N,M>& other) const {
-			return this->score <=> other.score;
-		}
-	};
+template<std::size_t N, std::size_t M>
+struct SBoxStatistics {
+	uint zero_count;
+	uint delta;
+	uint cnt_delta;
+	std::shared_ptr<defs::SBox<N,M>> sbox;
+	std::optional<int> score;
+	SBoxStatistics() = default;
+	SBoxStatistics(std::shared_ptr<defs::SBox<N, M>> sbox_shared_ptr, genetic::score_statistic<N> score_statistic) {
+		*this = sbox_analyze(sbox_shared_ptr, score_statistic);
+	}
+
+	auto operator<=>(const SBoxStatistics<N,M>& other) const {
+		return this->score <=> other.score;
+	}
+};
+
+
 }

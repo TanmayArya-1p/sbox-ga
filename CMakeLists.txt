@@ -12,7 +12,7 @@ add_executable(sbox-ga
 
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 
 # target_include_directories(sbox-ga PRIVATE ${CMAKE_SOURCE_DIR}/include)
